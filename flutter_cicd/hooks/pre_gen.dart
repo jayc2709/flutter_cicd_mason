@@ -38,4 +38,3 @@ List<Map<String, String>> _splitCsv(String? value) {
   if (value == null || value.isEmpty) return [];
   return value.split(',').map((e) => {'name': e.trim()}).toList();
 }
-}
