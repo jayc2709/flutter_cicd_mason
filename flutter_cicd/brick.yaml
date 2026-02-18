@@ -1,0 +1,176 @@
+name: flutter_cicd
+description: A Mason brick to generate GitHub Actions CI/CD workflows for Flutter projects.
+version: 0.1.0
+environment:
+  mason: ">=0.1.0-dev.50 <0.1.0"
+vars:
+  app_name:
+    type: string
+    description: Flutter app name
+    default: my_app
+    prompt: What is the app name?
+  package_name:
+    type: string
+    description: Android package name (e.g. com.example.app)
+    default: com.example.app
+    prompt: What is the package name?
+  flutter_channel:
+    type: enum
+    description: Flutter channel
+    default: stable
+    values:
+      - stable
+      - beta
+      - master
+    prompt: Which Flutter channel do you want to use?
+  flutter_version:
+    type: string
+    description: Specific Flutter version (leave empty for channel latest)
+    default: ""
+    prompt: Specific Flutter version? (Leave empty for latest)
+  run_tests:
+    type: boolean
+    description: Run flutter test?
+    default: true
+    prompt: Do you want to run tests?
+  run_analyze:
+    type: boolean
+    description: Run flutter analyze?
+    default: true
+    prompt: Do you want to run static analysis?
+  run_format_check:
+    type: boolean
+    description: Run dart format --check?
+    default: false
+    prompt: Do you want to check code formatting?
+  build_branches:
+    type: string
+    description: Branches that trigger a build (comma separated)
+    default: main,develop
+    prompt: Which branches should trigger a build?
+  deploy_branches:
+    type: string
+    description: Branches that trigger a deploy (comma separated)
+    default: main
+    prompt: Which branches should trigger a deploy?
+  run_on_pr:
+    type: boolean
+    description: Trigger build on Pull Requests?
+    default: true
+    prompt: Trigger build on PRs?
+  pr_target_branches:
+    type: string
+    description: PR target branches to trigger build (comma separated)
+    default: main,develop
+    prompt: Which PR target branches should trigger a build?
+  platform:
+    type: enum
+    description: Target platforms
+    default: both
+    values:
+      - android
+      - ios
+      - both
+    prompt: Which platforms do you want to build for?
+  build_mode:
+    type: enum
+    description: Build mode
+    default: release
+    values:
+      - release
+      - debug
+      - profile
+    prompt: Build mode?
+  android_build_type:
+    type: enum
+    description: Android build output type
+    default: appbundle
+    values:
+      - appbundle
+      - apk
+      - both
+    prompt: Android build type?
+  use_keystore:
+    type: boolean
+    description: Sign Android build with keystore?
+    default: true
+    prompt: Sign Android build with keystore?
+  keystore_secret_name:
+    type: string
+    description: GitHub secret name for base64 keystore
+    default: KEYSTORE_BASE64
+    prompt: Secret name for keystore?
+  auto_build_number:
+    type: boolean
+    description: Use GITHUB_RUN_NUMBER as build number?
+    default: true
+    prompt: Use GitHub run number as build version?
+  use_flavors:
+    type: boolean
+    description: Does the app use flavors?
+    default: false
+    prompt: Does your app use flavors?
+  flavor_list:
+    type: string
+    description: List of flavors (comma separated)
+    default: dev,prod
+    prompt: List flavors (comma separated)?
+  ios_build_method:
+    type: enum
+    description: iOS build method
+    default: simulator
+    values:
+      - simulator
+      - device_unsigned
+      - fastlane_placeholder
+    prompt: iOS build method?
+  deploy_target:
+    type: enum
+    description: Deployment target
+    default: none
+    values:
+      - firebase
+      - playstore
+      - appstore
+      - none
+    prompt: Where do you want to deploy?
+  firebase_app_id_secret:
+    type: string
+    description: Secret name for Firebase App ID
+    default: FIREBASE_APP_ID
+    prompt: Secret name for Firebase App ID?
+  firebase_token_secret:
+    type: string
+    description: Secret name for Firebase Token
+    default: FIREBASE_TOKEN
+    prompt: Secret name for Firebase Token?
+  firebase_tester_groups:
+    type: string
+    description: Firebase tester groups
+    default: testers
+    prompt: Firebase tester groups?
+  playstore_track:
+    type: enum
+    description: Google Play Store track
+    default: internal
+    values:
+      - internal
+      - alpha
+      - beta
+      - production
+    prompt: Play Store track?
+  notify_slack:
+    type: boolean
+    description: Send Slack notifications?
+    default: false
+    prompt: Send Slack notifications?
+  slack_webhook_secret:
+    type: string
+    description: Secret name for Slack Webhook
+    default: SLACK_WEBHOOK_URL
+    prompt: Secret name for Slack Webhook?
+  create_github_release:
+    type: boolean
+    description: Create GitHub release?
+    default: false
+    prompt: Create GitHub Release?
