@@ -1,0 +1,142 @@
+name: Build
+
+on:
+  push:
+    branches:
+      {{#buildBranchList}}
+      - {{name}}
+      {{/buildBranchList}}
+{{#run_on_pr}}
+  pull_request:
+    branches:
+      {{#prTargetBranchList}}
+      - {{name}}
+      {{/prTargetBranchList}}
+{{/run_on_pr}}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        {{#use_flavors}}
+        flavor:
+          {{#flavorIterable}}
+          - {{name}}
+          {{/flavorIterable}}
+        {{/use_flavors}}
+        {{^use_flavors}}
+        flavor: [main] # Default flavor if none specified
+        {{/use_flavors}}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: '{{flutter_channel}}'
+          {{#flutter_version}}flutter-version: '{{flutter_version}}'{{/flutter_version}}
+          cache: true
+
+      - name: Cache Pub Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.FLUTTER_HOME }}/.pub-cache
+            **/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      - name: Get Dependencies
+        run: flutter pub get
+
+      {{#run_format_check}}
+      - name: Check Formatting
+        run: dart format --check .
+      {{/run_format_check}}
+
+      {{#run_analyze}}
+      - name: Run Analysis
+        run: flutter analyze
+      {{/run_analyze}}
+
+      {{#run_tests}}
+      - name: Run Tests
+        run: flutter test --coverage
+      {{/run_tests}}
+
+      {{#isAndroid}}
+      - name: Setup Android Keystore
+        if: ${{ matrix.flavor }}
+        {{#use_keystore}}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=keystore.jks" >> android/key.properties
+        {{/use_keystore}}
+        {{^use_keystore}}
+        run: echo "Skipping keystore setup (debug build or not using keystore)"
+        {{/use_keystore}}
+
+      - name: Build Android
+        run: |
+          BUILD_CMD="flutter build {{android_build_type}}"
+          BUILD_ARGS="--{{build_mode}}"
+          
+          {{#use_flavors}}
+          BUILD_ARGS="$BUILD_ARGS --flavor ${{ matrix.flavor }}"
+          {{/use_flavors}}
+          
+          {{#auto_build_number}}
+          BUILD_ARGS="$BUILD_ARGS --build-number=${{ github.run_number }}"
+          {{/auto_build_number}}
+          
+          echo "Running: $BUILD_CMD $BUILD_ARGS"
+          $BUILD_CMD $BUILD_ARGS
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: {{app_name}}-android-${{ matrix.flavor }}-${{ github.run_number }}
+          path: build/app/outputs/{{#buildAppBundle}}bundle{{/buildAppBundle}}{{^buildAppBundle}}apk{{/buildAppBundle}}/**
+      {{/isAndroid}}
+
+      {{#isIos}}
+      - name: Build iOS
+        run: |
+          {{#isSimulator}}
+          flutter build ios --simulator
+          {{/isSimulator}}
+          {{#isDeviceUnsigned}}
+          flutter build ios --no-codesign
+          {{/isDeviceUnsigned}}
+          {{#isFastlaneIos}}
+          echo "TODO: Setup Fastlane for iOS build"
+          {{/isFastlaneIos}}
+
+      {{^isSimulator}}
+      - name: Upload iOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: {{app_name}}-ios-${{ matrix.flavor }}-${{ github.run_number }}
+          path: build/ios/iphoneos/Runner.app
+      {{/isSimulator}}
+      {{/isIos}}

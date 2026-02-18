@@ -1,0 +1,107 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build"]
+    types:
+      - completed
+    branches:
+      {{#deployBranchList}}
+      - {{name}}
+      {{/deployBranchList}}
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: {{app_name}}-android-*
+          path: artifacts
+          merge-multiple: true
+
+      {{#deployToFirebase}}
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_TOKEN }}
+          groups: {{firebase_tester_groups}}
+          file: artifacts/app-{{build_mode}}.{{#buildAppBundle}}aab{{/buildAppBundle}}{{^buildAppBundle}}apk{{/buildAppBundle}}
+      {{/deployToFirebase}}
+
+      {{#deployToPlayStore}}
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_STORE_SERVICE_ACCOUNT }}
+          packageName: {{package_name}}
+          track: {{playstore_track}}
+          releaseFiles: artifacts/app-{{build_mode}}.{{#buildAppBundle}}aab{{/buildAppBundle}}{{^buildAppBundle}}apk{{/buildAppBundle}}
+      {{/deployToPlayStore}}
+
+      {{#deployToAppStore}}
+      - name: Upload to App Store
+        run: echo "TODO: Implement AppStore upload via Fastlane/Transporter"
+      {{/deployToAppStore}}
+
+      {{#create_github_release}}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      {{/create_github_release}}
+
+      {{#notify_slack}}
+      - name: Slack Notification (Success)
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "Deployment Successful! :rocket:",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Successful!* :rocket:\nProject: {{app_name}}\nBranch: ${{ github.ref_name }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack Notification (Failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "Deployment Failed :x:",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Deployment Failed* :x:\nProject: {{app_name}}\nCheck actions logs."
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      {{/notify_slack}}
