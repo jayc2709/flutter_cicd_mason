@@ -2,7 +2,7 @@ name: flutter_cicd
 description: A Mason brick to generate GitHub Actions CI/CD workflows for Flutter projects.
 version: 0.1.0
 environment:
-  mason: ">=0.1.0-dev.50 <0.1.0"
+  mason: ">=0.1.0 <0.2.0"
 vars:
   app_name:
     type: string
