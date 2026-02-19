@@ -38,6 +38,7 @@ dart pub global activate mason_cli
 In your Flutter project root, run:
 
 ```bash
+mason init
 mason add flutter_cicd --git-url https://github.com/jayc2709/flutter_cicd_mason --git-path flutter_cicd
 ```
 
